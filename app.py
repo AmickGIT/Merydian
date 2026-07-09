@@ -6,11 +6,24 @@ import time
 from datetime import datetime
 import pandas as pd
 
+import logging
+
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from agents.agent_controller import AgentController
+
+class StreamlitLogHandler(logging.Handler):
+    def __init__(self, placeholder):
+        super().__init__()
+        self.placeholder = placeholder
+        self.logs = []
+
+    def emit(self, record):
+        log_entry = self.format(record)
+        self.logs.append(log_entry)
+        self.placeholder.code("\n".join(self.logs), language="log")
 
 st.set_page_config(page_title="Merydian Engine Demo", page_icon="🤖", layout="wide")
 
@@ -138,8 +151,26 @@ if submit_button and user_input:
     
     try:
         st.info("🧠 Engine is processing your feedback...")
-        # Run the agent controller
-        result = controller.process_user_input(user_input, context)
+        
+        with st.expander("Terminal Logs (Live)", expanded=True):
+            log_placeholder = st.empty()
+            
+        handler = StreamlitLogHandler(log_placeholder)
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - \n%(message)s\n'))
+        
+        agents_logger = logging.getLogger('agents')
+        agents_logger.setLevel(logging.INFO)
+        agents_logger.addHandler(handler)
+        
+        httpx_logger = logging.getLogger('httpx')
+        httpx_logger.addHandler(handler)
+        
+        try:
+            # Run the agent controller
+            result = controller.process_user_input(user_input, context)
+        finally:
+            agents_logger.removeHandler(handler)
+            httpx_logger.removeHandler(handler)
         
         explanations = []
         optimizer_output_dir = None
