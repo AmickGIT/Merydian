@@ -59,8 +59,8 @@ class StreamlitLogHandler(logging.Handler):
         self.logs.append(log_entry)
         self.placeholder.code("\n".join(self.logs), language="log")
 
-st.title("Merydian Engine Demo - Live Feedback Agent")
-st.markdown("This demo interacts directly with the backend engine (`agents` and `ml_or`). You can provide custom customer feedback and see how the engine processes it, triggers the optimizer, and generates explanations.")
+st.title("Merydian Engine Demo - Live Optimizer and Agentic Pipeline Demo")
+st.markdown("This demo interacts directly with the backend engine. You can provide custom customer feedback and see how the engine processes it, triggers the optimizer, and generates revised itineraries and explainations.")
 
 @st.cache_resource
 def get_controller():
