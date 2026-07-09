@@ -76,6 +76,10 @@ class FeedbackAgent:
             # Add raw input
             parsed_data["raw_input"] = user_input
             
+            # Strictly enforce the explicit family_id from the context if the user selected one
+            if context and context.get("family_id"):
+                parsed_data["family_id"] = context["family_id"]
+            
             # Validate and construct FeedbackEvent
             event = FeedbackEvent(**parsed_data)
             logger.info(f"Successfully parsed event: {event.event_type}")

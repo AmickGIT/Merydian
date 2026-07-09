@@ -31,6 +31,10 @@ def custom_init(self, *args, **kwargs):
     original_init(self, *args, **kwargs)
     ctx = get_script_run_ctx()
     
+    from datetime import datetime
+    if "cpsat_logs" in st.session_state:
+        st.session_state.cpsat_logs.append(f"\n[{datetime.now().strftime('%H:%M:%S')}] NEW OPTIMIZATION JOB ------------------------")
+    
     def log_callback(message):
         if ctx:
             add_script_run_ctx(threading.current_thread(), ctx)
@@ -218,7 +222,6 @@ with col_main:
             
             # Setup logging for this run
             st.session_state.app_logs.append(f"\n[{datetime.now().strftime('%H:%M:%S')}] NEW SCENARIO ------------------------")
-            st.session_state.cpsat_logs.append(f"\n[{datetime.now().strftime('%H:%M:%S')}] NEW OPTIMIZATION JOB ------------------------")
             
             handler = StreamlitLogHandler(log_placeholder)
             handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - \n%(message)s\n'))
@@ -311,6 +314,11 @@ with col_main:
                                 for e in st.session_state.current_explanations:
                                     if e['family_id'] == selected_exp:
                                         st.info(f"**{e['family_id']}**: {e['explanation']}")
+            elif result.get('preference_output'):
+                pref_file = result['preference_output'].get('family_preferences')
+                if pref_file and Path(pref_file).exists():
+                    st.session_state.current_prefs = Path(pref_file)
+                    st.success("✅ Engine updated Family Preferences (Optimizer was bypassed).")
             else:
                 st.warning("⚠️ Engine decided NOT to run the Optimizer for this feedback.")
     

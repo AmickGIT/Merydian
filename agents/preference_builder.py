@@ -30,7 +30,8 @@ def load_base_preferences(prefs_path: Path) -> Dict[str, Any]:
 def apply_event_to_preferences(
     preferences: Dict[str, Any],
     event: Dict[str, Any],
-    poi_id: Optional[str]
+    poi_id: Optional[str],
+    locations_map: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Apply a feedback event to family preferences.
@@ -39,6 +40,7 @@ def apply_event_to_preferences(
         preferences: Current family preferences dict
         event: FeedbackEvent dictionary
         poi_id: Location ID (already mapped from name)
+        locations_map: Optional POI dictionary mapping ID to POI attributes (including tags)
     
     Returns:
         Updated preferences dictionary
@@ -84,6 +86,43 @@ def apply_event_to_preferences(
         if poi_id in preferences[family_id].get("must_visit_locations", []):
             preferences[family_id]["must_visit_locations"].remove(poi_id)
             logger.info(f"Removed {poi_id} from {family_id} must_visit_locations list")
+            
+    # Dynamic Interest Vector Modification based on POI tags
+    if poi_id and locations_map and poi_id in locations_map:
+        poi_tags = locations_map[poi_id].get("tags", [])
+        valid_interests = ["history", "architecture", "food", "nature", "nightlife", "shopping", "religious"]
+        
+        delta = 0.0
+        if event_type == "MUST_VISIT_ADDED":
+            delta = 0.15
+        elif event_type == "NEVER_VISIT_ADDED":
+            delta = -0.15
+        elif event_type == "POI_RATING":
+            rating = event.get("rating")
+            if rating is not None:
+                if float(rating) >= 7.5:
+                    delta = 0.10
+                elif float(rating) <= 4.0:
+                    delta = -0.10
+            else:
+                # If no explicit numerical rating was given (e.g., 'we liked it'), assume positive sentiment
+                delta = 0.05
+        
+        if delta != 0.0:
+            if "interest_vector" not in preferences[family_id]:
+                preferences[family_id]["interest_vector"] = {}
+                
+            interest_vector = preferences[family_id]["interest_vector"]
+            
+            for tag in poi_tags:
+                if tag in valid_interests:
+                    current_val = interest_vector.get(tag, 0.5)
+                    # Clamped between 0.0 and 1.0
+                    new_val = max(0.0, min(1.0, current_val + delta))
+                    interest_vector[tag] = round(new_val, 2)
+                    logger.info(f"Adjusted {family_id} interest '{tag}' by {delta:+.2f} -> {new_val:.2f}")
+            
+            preferences[family_id]["interest_vector"] = interest_vector
     
     return preferences
 

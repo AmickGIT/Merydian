@@ -80,6 +80,37 @@ class OptimizerAgent:
         
         logger.info(f"Temporary transport graph saved: {temp_file}")
         return str(temp_file)
+        
+    def update_preferences_only(
+        self,
+        preferences: Dict[str, Any],
+        output_dir: Optional[Path] = None,
+        current_prefs_path: Optional[Path] = None
+    ) -> Dict[str, Path]:
+        """Update and save preferences without running the heavy optimizer."""
+        logger.info("Running lightweight preference update...")
+        
+        run_dir = Path(output_dir) if output_dir else (self.output_dir / "temp")
+        run_dir.mkdir(parents=True, exist_ok=True)
+        
+        prefs_file = current_prefs_path if current_prefs_path else self.base_prefs_path
+        base_prefs = load_base_preferences(prefs_file)
+        
+        poi_id = None
+        if preferences and preferences.get("poi_name"):
+            poi_id = get_poi_id(preferences["poi_name"], self.locations_map)
+            
+        updated_prefs = apply_event_to_preferences(
+            preferences=base_prefs.copy(),
+            event=preferences or {},
+            poi_id=poi_id,
+            locations_map=self.locations_map
+        )
+        
+        updated_prefs_path = run_dir / "family_preferences_updated.json"
+        save_preferences(updated_prefs, updated_prefs_path)
+        
+        return {"family_preferences": updated_prefs_path}
     
     def run(
         self,
@@ -154,7 +185,8 @@ class OptimizerAgent:
         updated_prefs = apply_event_to_preferences(
             preferences=base_prefs.copy(),
             event=preferences or {},
-            poi_id=poi_id
+            poi_id=poi_id,
+            locations_map=self.locations_map
         )
         
         # Save updated preferences

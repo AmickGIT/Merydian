@@ -171,7 +171,27 @@ class AgentController:
         
         elif decision.action == ActionType.UPDATE_PREFERENCES_ONLY:
             logger.info("\n[STAGE 3] Updating preferences (optimizer not run)")
-            logger.info("  Preference update acknowledged")
+            
+            # Construct preferences payload for soft constraints
+            preferences = {
+                "event_type": event.event_type,
+                "family_id": event.family_id,
+                "poi_name": event.poi_name,
+                "poi_id": event.poi_id,
+                "rating": getattr(event, 'rating', None)
+            }
+            
+            output_dir_path = Path(context["output_dir"]) if (context and context.get("output_dir")) else None
+            current_prefs_path = Path(context["current_preferences_path"]) if (context and context.get("current_preferences_path")) else None
+            
+            # Delegate to OptimizerAgent's lightweight method
+            pref_output = self.optimizer_agent.update_preferences_only(
+                preferences=preferences,
+                output_dir=output_dir_path,
+                current_prefs_path=current_prefs_path
+            )
+            result["preference_output"] = pref_output
+            logger.info("  Preference update acknowledged and saved.")
         
         else:
             logger.info(f"\n[STAGE 3] No action required")
