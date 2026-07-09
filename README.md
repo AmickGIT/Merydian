@@ -1,8 +1,10 @@
 # MerYDiaN - Multi-Family Travel Coordination Platform
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://merydian.streamlit.app/)
-> ### 🔴 [LIVE] Check it out! 
-> The interactive demo of the **Merydian Optimization Engine and Explainability Workflow** is live! Click the badge above or go to [`https://merydian.streamlit.app/`](https://merydian.streamlit.app/) to try it yourself.
+## 🔴 [LIVE] Check it out! &nbsp;&nbsp;&nbsp;&nbsp; [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://merydian.streamlit.app/)
+### The interactive demo of the **Merydian Optimization Engine and Explainability Workflow** is live! Click the badge above or go to [`https://merydian.streamlit.app/`](https://merydian.streamlit.app/) to try it yourself.
+
+
+
 
 MerYDiaN is an agentic travel coordination system designed to manage complex multi-family group trips. The platform combines real-time event handling, human-in-the-loop decision making, and automated booking execution to deliver adaptive travel experiences.
 
