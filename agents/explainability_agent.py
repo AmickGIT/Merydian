@@ -128,7 +128,7 @@ Context:
 - ROUTE_REROUTED / ROUTE_OPTIMIZED -> "We found a better route for you"
 - LOW_INTEREST_DROPPED -> "We found other places you might enjoy more"
 - OBJECTIVE_DOMINATED -> "We prioritized options that give you the best value and experience"
-- HISTORY_BAN -> "Due to historical site restrictions"
+- HISTORY_BAN -> "Already visited this place before, so we focused on new experiences"
 
 Generate a short, engaging explanation for the changes in the payload. Focus on the 'WHY' and the 'VALUE'."""
         return prompt
