@@ -1,0 +1,6 @@
+streamlit
+ortools
+groq
+pydantic
+python-dotenv
+pandas
