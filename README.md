@@ -1,6 +1,6 @@
 # MerYDiaN - Multi-Family Travel Coordination Platform
 
-## 🔴 [LIVE] Check it out! &nbsp;&nbsp;&nbsp;&nbsp; [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://merydian.streamlit.app/)
+## 🔴 [LIVE] Check it out! &nbsp; [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://merydian.streamlit.app/)
 ### The interactive demo of the **Merydian Optimization Engine and Explainability Workflow** is live! Click the badge above or go to [`https://merydian.streamlit.app/`](https://merydian.streamlit.app/) to try it yourself.
 
 
