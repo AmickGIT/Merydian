@@ -126,6 +126,8 @@ if "current_solution" not in st.session_state:
     st.session_state.current_solution = initial_solution_path
 if "current_prefs" not in st.session_state:
     st.session_state.current_prefs = base_prefs_path
+if "current_explanations" not in st.session_state:
+    st.session_state.current_explanations = []
 
 # Layout definition
 col_main, col_log = st.columns([2, 1])
@@ -145,15 +147,23 @@ with col_log:
         st.session_state.cpsat_placeholder.code("\n".join(st.session_state.cpsat_logs), language="log")
 
 with col_main:
-    st.header("Current Itinerary in Focus")
+    itinerary_placeholder = st.empty()
+    
+    def render_itinerary(df, title="Current Itinerary", opacity=1.0):
+        itinerary_placeholder.empty()
+        with itinerary_placeholder.container():
+            st.header(title)
+            if not df.empty:
+                if opacity < 1.0:
+                    styled = df.style.map(highlight_status, subset=['Status']).set_properties(**{'opacity': str(opacity)})
+                else:
+                    styled = df.style.map(highlight_status, subset=['Status'])
+                st.dataframe(styled, hide_index=True)
+            else:
+                st.warning("No itinerary data found.")
+                
     current_df = parse_itinerary_to_df(st.session_state.current_solution)
-    if not current_df.empty:
-        st.dataframe(
-            current_df.style.map(highlight_status, subset=['Status']),
-            hide_index=True
-        )
-    else:
-        st.warning("No itinerary data found.")
+    render_itinerary(current_df)
     
     st.markdown("---")
     st.subheader("Add Custom Customer Feedback")
@@ -172,6 +182,19 @@ with col_main:
         
         user_input = st.text_area("Customer Feedback Input", "We absolutely must visit Qutub Minar tomorrow on Day 2, it's a must-see for us.")
         submit_button = st.form_submit_button("Submit Feedback")
+        
+    st.markdown("---")
+    st.subheader("Personalized Explanations")
+    explanation_placeholder = st.empty()
+    
+    # Display the current explanations (if any exist from a past run)
+    if st.session_state.current_explanations and not submit_button:
+        with explanation_placeholder.container():
+            exp_names = [exp['family_id'] for exp in st.session_state.current_explanations]
+            selected_exp = st.selectbox("View Explanation For:", exp_names, key="current_explanations_select")
+            for exp in st.session_state.current_explanations:
+                if exp['family_id'] == selected_exp:
+                    st.info(f"**{exp['family_id']}**: {exp['explanation']}")
 
     if submit_button and user_input:
         context = {"current_day": current_day}
@@ -188,6 +211,9 @@ with col_main:
         context["output_dir"] = str(output_dir)
         
         try:
+            # Indicate loading state and clear the old one properly
+            render_itinerary(current_df, title="Current Itinerary in Focus (⚙️ Optimizing...)", opacity=0.4)
+            
             st.info("🧠 Engine is processing your feedback...")
             
             # Setup logging for this run
@@ -216,8 +242,22 @@ with col_main:
             explanations = []
             optimizer_output_dir = None
             
+            # Immediately update the itinerary view if optimization succeeded, BEFORE generating explanations!
             if result['optimizer_output']:
                 optimizer_output_dir = Path(result['optimizer_output']['llm_payloads']).parent
+                optimized_solution_file = optimizer_output_dir / "optimized_solution.json"
+                if optimized_solution_file.exists():
+                    st.session_state.current_solution = optimized_solution_file
+                    
+                    # Update the placeholder immediately so user doesn't wait for explanations to see the new itinerary
+                    new_df = parse_itinerary_to_df(st.session_state.current_solution)
+                    render_itinerary(new_df)
+                            
+                updated_prefs_file = optimizer_output_dir / "family_preferences_updated.json"
+                if updated_prefs_file.exists():
+                    st.session_state.current_prefs = updated_prefs_file
+                    
+                # Now generate explanations
                 payloads_file = optimizer_output_dir / "llm_payloads.json"
                 
                 if payloads_file.exists():
@@ -234,27 +274,43 @@ with col_main:
                         payloads_to_process = payload_data
                     
                     if payloads_to_process:
-                        st.success("✅ Optimizer Triggered! Generating personalized explanations (streaming live)...")
+                        st.success("✅ Optimizer Triggered! Generating personalized explanations...")
+                        st.session_state.current_explanations = []
+                        
                         for payload in payloads_to_process:
                             name = payload.get("family_id") or payload.get("audience", "Unknown")
-                            with st.expander(f"Explanation for {name}", expanded=True):
-                                with st.spinner(f"Groq is generating explanation for {name}..."):
-                                    explanation = controller.explainability_agent.explain(payload)
-                                    st.write(explanation.summary)
-                                    explanations.append({
-                                        "audience": payload.get("audience", "FAMILY"),
-                                        "family_id": name,
-                                        "explanation": explanation.summary
-                                    })
-                                    time.sleep(2)
-                
-                optimized_solution_file = optimizer_output_dir / "optimized_solution.json"
-                if optimized_solution_file.exists():
-                    st.session_state.current_solution = optimized_solution_file
-                
-                updated_prefs_file = optimizer_output_dir / "family_preferences_updated.json"
-                if updated_prefs_file.exists():
-                    st.session_state.current_prefs = updated_prefs_file
+                            
+                            # Update UI before API call to show what's generating
+                            explanation_placeholder.empty()
+                            with explanation_placeholder.container():
+                                st.info(f"⚙️ Generating explanation for {name}...")
+                                exp_names = [e['family_id'] for e in st.session_state.current_explanations]
+                                if exp_names:
+                                    selected_exp = st.selectbox("View Explanation For:", exp_names, key=f"live_exp_pre_{name}")
+                                    for e in st.session_state.current_explanations:
+                                        if e['family_id'] == selected_exp:
+                                            st.info(f"**{e['family_id']}**: {e['explanation']}")
+                                            
+                            # Run the LLM explanation generation
+                            explanation = controller.explainability_agent.explain(payload)
+                            
+                            # Save to state
+                            exp_data = {
+                                "audience": payload.get("audience", "FAMILY"),
+                                "family_id": name,
+                                "explanation": explanation.summary
+                            }
+                            explanations.append(exp_data)
+                            st.session_state.current_explanations.append(exp_data)
+                            
+                            # Update UI after generation completes to add the new dropdown option
+                            explanation_placeholder.empty()
+                            with explanation_placeholder.container():
+                                exp_names = [e['family_id'] for e in st.session_state.current_explanations]
+                                selected_exp = st.selectbox("View Explanation For:", exp_names, key=f"live_exp_post_{name}")
+                                for e in st.session_state.current_explanations:
+                                    if e['family_id'] == selected_exp:
+                                        st.info(f"**{e['family_id']}**: {e['explanation']}")
             else:
                 st.warning("⚠️ Engine decided NOT to run the Optimizer for this feedback.")
     
@@ -267,9 +323,8 @@ with col_main:
             }
             st.session_state.scenarios_run.append(scenario_output)
             
-            st.success("Scenario Complete! Click below to view the updated itinerary.")
-            if st.button("Refresh View"):
-                st.rerun()
+            # Auto-refresh to show the new itinerary
+            st.rerun()
                 
         except Exception as e:
             st.error(f"Error processing feedback: {e}")
@@ -286,7 +341,5 @@ with col_main:
                 
                 if run["optimizer_triggered"]:
                     st.write("✅ Optimizer Triggered")
-                    for exp in run["explanations"]:
-                        st.info(f"**{exp['family_id']}**: {exp['explanation']}")
                 else:
                     st.write("❌ Optimizer Not Triggered")
