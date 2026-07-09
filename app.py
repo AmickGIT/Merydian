@@ -118,7 +118,7 @@ with st.form("feedback_form"):
     with col2:
         current_day = st.number_input("Current Day (0-indexed)", min_value=0, max_value=max(0, num_days-1), value=0)
     
-    user_input = st.text_area("Customer Feedback Input", "E.g. We absolutely must visit Qutub Minar tomorrow on Day 2, it's a must-see for us.")
+    user_input = st.text_area("Customer Feedback Input", "We absolutely must visit Qutub Minar tomorrow on Day 2, it's a must-see for us.")
     submit_button = st.form_submit_button("Submit Feedback")
 
 if submit_button and user_input:
